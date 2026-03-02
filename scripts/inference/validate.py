@@ -76,12 +76,6 @@ def main():
         help="Path to base Qwen-Image-Edit-2509 model",
     )
     parser.add_argument(
-        "--dinov2_path",
-        type=str,
-        default="/path/to/DINOv2-with-registers-base",
-        help="Path to DINOv2 model",
-    )
-    parser.add_argument(
         "--lora_path",
         type=str,
         default=None,
@@ -121,7 +115,7 @@ def main():
             origin_file_pattern="processor/",
             local_model_path=args.base_model_path,
         ),
-        dinov2_path=args.dinov2_path,
+        enable_vt_supervision=False,
     )
     load_finetuned_into_pipe(pipe, args.lora_path)
 

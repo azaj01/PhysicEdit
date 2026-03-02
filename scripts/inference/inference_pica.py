@@ -185,12 +185,6 @@ def main():
         help="Path to base Qwen-Image-Edit-2509 model"
     )
     parser.add_argument(
-        "--dinov2_path",
-        type=str,
-        default="/path/to/DINOv2-with-registers-base",
-        help="Path to DINOv2 model"
-    )
-    parser.add_argument(
         "--data_path",
         type=str,
         default="/path/to/PICABench_data",
@@ -236,7 +230,7 @@ def main():
         ],
         tokenizer_config=ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/", local_model_path=args.base_model_path),
         processor_config=ModelConfig(model_id="Qwen/Qwen-Image-Edit", origin_file_pattern="processor/", local_model_path=args.base_model_path),
-        dinov2_path=args.dinov2_path,
+        enable_vt_supervision=False,
     )
     
     print("Loading finetuned LoRA + new modules into pipeline...")

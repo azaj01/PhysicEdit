@@ -182,7 +182,7 @@ class QwenImageBlockwiseMultiControlNet(torch.nn.Module):
 
 class QwenImagePhysicPipeline(BasePipeline):
 
-    def __init__(self, device="cuda", torch_dtype=torch.bfloat16, dinov2_path=None):
+    def __init__(self, device="cuda", torch_dtype=torch.bfloat16, dinov2_path=None, enable_vt_supervision: bool = True):
         super().__init__(
             device=device, torch_dtype=torch_dtype,
             height_division_factor=16, width_division_factor=16,
@@ -194,31 +194,44 @@ class QwenImagePhysicPipeline(BasePipeline):
         self.dit: QwenImageDiT = None
         self.vae: QwenImageVAE = None
 
-        # DINO part
-        assert dinov2_path is not None, "dinov2_path must be provided (path to DINOv2-with-registers-base)"
-        self.dinov2 = Dinov2withNorm(dinov2_path=dinov2_path)
-        self.dinov2.to(device=device, dtype=torch_dtype)
-        proc_image_mean = [0.485, 0.456, 0.406]
-        proc_image_std = [0.229, 0.224, 0.225]
-        self.dinov2_mean = torch.tensor(proc_image_mean).view(1, 3, 1, 1)
-        self.dinov2_std = torch.tensor(proc_image_std).view(1, 3, 1, 1)
+        self.enable_vt_supervision = enable_vt_supervision
 
-        self.dino_resampler = PerceiverResampler(dim=768, num_latents=SPECIAL_TOKEN_NUM, depth=2)
-        self.dino_resampler.to(device=device, dtype=torch_dtype)
-        self.dino_time_embed = nn.Embedding(6, 768)
-        self.dino_time_embed.to(device=device, dtype=torch_dtype)
+        # Visual-thinking supervision branch (teacher targets for training loss).
+        if self.enable_vt_supervision:
+            assert dinov2_path is not None, "dinov2_path must be provided when enable_vt_supervision=True"
+            self.dinov2 = Dinov2withNorm(dinov2_path=dinov2_path)
+            self.dinov2.to(device=device, dtype=torch_dtype)
+            proc_image_mean = [0.485, 0.456, 0.406]
+            proc_image_std = [0.229, 0.224, 0.225]
+            self.dinov2_mean = torch.tensor(proc_image_mean).view(1, 3, 1, 1)
+            self.dinov2_std = torch.tensor(proc_image_std).view(1, 3, 1, 1)
 
-        self.dino_resampler_adapter = VisualThinkingAdapter(in_dim=768, out_dim=3584)
-        self.dino_resampler_adapter.to(device=device, dtype=torch_dtype)
-        self.dino_input_size = 224
+            self.dino_resampler = PerceiverResampler(dim=768, num_latents=SPECIAL_TOKEN_NUM, depth=2)
+            self.dino_resampler.to(device=device, dtype=torch_dtype)
+            self.dino_time_embed = nn.Embedding(6, 768)
+            self.dino_time_embed.to(device=device, dtype=torch_dtype)
 
-        # VAE part
-        self.vae_resampler = PerceiverResampler(dim=64, num_latents=SPECIAL_TOKEN_NUM, depth=2, max_num_media_tokens=10240)
-        self.vae_resampler.to(device=device, dtype=torch_dtype)
-        self.vae_time_embed = nn.Embedding(6, 64)
-        self.vae_time_embed.to(device=device, dtype=torch_dtype)
-        self.vae_resampler_adapter = VisualThinkingAdapter(in_dim=64, out_dim=3584)
-        self.vae_resampler_adapter.to(device=device, dtype=torch_dtype)
+            self.dino_resampler_adapter = VisualThinkingAdapter(in_dim=768, out_dim=3584)
+            self.dino_resampler_adapter.to(device=device, dtype=torch_dtype)
+            self.dino_input_size = 224
+
+            self.vae_resampler = PerceiverResampler(dim=64, num_latents=SPECIAL_TOKEN_NUM, depth=2, max_num_media_tokens=10240)
+            self.vae_resampler.to(device=device, dtype=torch_dtype)
+            self.vae_time_embed = nn.Embedding(6, 64)
+            self.vae_time_embed.to(device=device, dtype=torch_dtype)
+            self.vae_resampler_adapter = VisualThinkingAdapter(in_dim=64, out_dim=3584)
+            self.vae_resampler_adapter.to(device=device, dtype=torch_dtype)
+        else:
+            self.dinov2 = None
+            self.dinov2_mean = None
+            self.dinov2_std = None
+            self.dino_resampler = None
+            self.dino_time_embed = None
+            self.dino_resampler_adapter = None
+            self.dino_input_size = None
+            self.vae_resampler = None
+            self.vae_time_embed = None
+            self.vae_resampler_adapter = None
 
         # A dual head adapter
         self.visual_thinking_adapter = VisualThinkingDualAdapter(in_dim=3584, out_dim=3584, t_min=self.scheduler.timesteps.min().item(), t_max=self.scheduler.timesteps.max().item())
@@ -502,6 +515,7 @@ class QwenImagePhysicPipeline(BasePipeline):
         tokenizer_config: ModelConfig = ModelConfig(model_id="Qwen/Qwen-Image", origin_file_pattern="tokenizer/"),
         processor_config: ModelConfig = None,
         dinov2_path: str = None,
+        enable_vt_supervision: bool = True,
     ):
         # Download and load models
         model_manager = ModelManager()
@@ -514,7 +528,12 @@ class QwenImagePhysicPipeline(BasePipeline):
             )
         
         # Initialize pipeline
-        pipe = QwenImagePhysicPipeline(device=device, torch_dtype=torch_dtype, dinov2_path=dinov2_path)
+        pipe = QwenImagePhysicPipeline(
+            device=device,
+            torch_dtype=torch_dtype,
+            dinov2_path=dinov2_path,
+            enable_vt_supervision=enable_vt_supervision,
+        )
         pipe.text_encoder = model_manager.fetch_model("qwen_image_text_encoder")
         pipe.dit = model_manager.fetch_model("qwen_image_dit")
         pipe.vae = model_manager.fetch_model("qwen_image_vae")
