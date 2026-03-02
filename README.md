@@ -128,7 +128,6 @@ python scripts/inference/validate.py \
     --image_path /path/to/input.jpg \
     --save_path /path/to/output.jpg \
     --base_model_path /path/to/Qwen-Image-Edit-2509 \
-    --dinov2_path /path/to/DINOv2-with-registers-base \
     --lora_path /path/to/physicedit_checkpoint.safetensors
 ```
 
