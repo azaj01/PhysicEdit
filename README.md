@@ -144,14 +144,11 @@ This codebase is heavily built on [DiffSynth-Studio](https://github.com/modelsco
 If you find this work for your research and applications, please cite using this BibTeX:
 
 ```bibtex
-@misc{zhao2026staticsdynamicsphysicsawareimage,
-      title={From Statics to Dynamics: Physics-Aware Image Editing with Latent Transition Priors}, 
-      author={Liangbing Zhao and Le Zhuo and Sayak Paul and Hongsheng Li and Mohamed Elhoseiny},
-      year={2026},
-      eprint={2602.21778},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2602.21778}, 
+@article{zhao2026statics,
+  title={From Statics to Dynamics: Physics-Aware Image Editing with Latent Transition Priors},
+  author={Zhao, Liangbing and Zhuo, Le and Paul, Sayak and Li, Hongsheng and Elhoseiny, Mohamed},
+  journal={arXiv preprint arXiv:2602.21778},
+  year={2026}
 }
 ```
 
